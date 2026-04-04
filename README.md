@@ -6,7 +6,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 
 **Affiliation:** Universitas Jenderal Soedirman, Purwokerto, Indonesia  
-**Status:** Research in progress — April 2026
+**Status:** Research Completed — April 2026
 
 ---
 
