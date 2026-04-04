@@ -2,7 +2,9 @@
 
 > **A Labeled Benchmark Dataset and Comparative Study for Anomaly Detection in Off-Grid Renewable Energy IoT Monitoring**
 
-[![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![License: MIT](https://img.shields.io/badge/Code%20License-MIT-blue.svg)](LICENSE)
+[![Data License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![Paper: IEEE IoT Journal (Under Review)](https://img.shields.io/badge/Paper-IEEE%20IoT%20Journal-green.svg)]()
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 
 **Affiliation:** Universitas Jenderal Soedirman, Purwokerto, Indonesia  
@@ -108,10 +110,9 @@ SCIO-Bench/
 
 ```bibtex
 @article{scio_bench_2026,
-  title   = {SCIO-Bench: A Labeled Benchmark Dataset and Comparative Study
-             for Anomaly Detection in Off-Grid Renewable Energy IoT Monitoring},
-  author  = {Riyan, Karel Tsalasatir},
-  journal = {TechRxiv (IEEE Preprint)},
+  title   = {Rule-Based vs. Machine Learning Anomaly Detection for Off-Grid Renewable Energy IoT Telemetry: A Comparative Benchmark with Adaptive Thresholding, Cyber-Physical Discrimination, and Hardware-Algorithmic Co-Design},
+  author  = {Riyan, Karel Tsalasatir and Setyoko, Muhammad Azka Mauzaky and Ulumudin, Ihya},
+  journal = {Zenodo (Preprint)},
   year    = {2026},
   doi     = {10.36227/techrxiv.XXXXXXX}
 }
