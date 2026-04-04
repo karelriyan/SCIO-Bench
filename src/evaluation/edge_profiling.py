@@ -98,42 +98,45 @@ def quantize_lstm_ae_to_tflite(
     import tensorflow as tf
     
     # Load Keras model
-    model = tf.keras.models.load_model(str(model_path))
+    original_model = tf.keras.models.load_model(str(model_path))
+    
+    # Keras LSTMs need a static batch size to lower TensorList ops to TFLite
+    # We clone the model and force batch_size=1
+    seq_len = calib_data.shape[1]
+    n_features = calib_data.shape[2]
+    
+    cloned_model = tf.keras.models.clone_model(
+        original_model, 
+        input_tensors=tf.keras.layers.Input(batch_shape=(1, seq_len, n_features))
+    )
+    cloned_model.set_weights(original_model.get_weights())
     
     # Representative dataset generator for INT8 calibration
     def representative_data_gen():
-        # Yield subsets of calibration data
+        # Yield subsets of calibration data (batch_size=1)
         for i in range(min(100, len(calib_data))):
             yield [calib_data[i:i+1].astype(np.float32)]
 
-    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    converter = tf.lite.TFLiteConverter.from_keras_model(cloned_model)
     
     # Optimization settings for deep embedded devices
+    # We use Dynamic Range Quantization (Post-Training) to convert weights to INT8.
+    # This avoids full INT8 calibration which segfaults in some TF 2.x Linux wheels
+    # when processing cloned static LSTMs. It still reduces model size by 4x.
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.representative_dataset = representative_data_gen
     
-    # Constrain ops to INT8 ONLY (required for Edge TPU or strict integer DSPs)
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    converter.inference_input_type = tf.int8
-    converter.inference_output_type = tf.int8
+    # Force builtins and restrict from using Select TF Ops so it runs natively
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
     
     try:
         tflite_model = converter.convert()
-        tflite_path = model_path.parent / (model_path.stem + "_quantized.tflite")
+        tflite_path = model_path.parent / (model_path.stem + "_quantized_dynamic.tflite")
         with open(tflite_path, "wb") as f:
             f.write(tflite_model)
         return tflite_path
     except Exception as e:
-        print(f"[edge] TFLite conversion failed (fallback to weights-only): {e}")
-        # Fallback to dynamic range quantization (weights only, activations float)
-        converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
-        converter.inference_input_type = tf.float32
-        converter.inference_output_type = tf.float32
-        tflite_model = converter.convert()
-        tflite_path = model_path.parent / (model_path.stem + "_dynamic_quant.tflite")
-        with open(tflite_path, "wb") as f:
-            f.write(tflite_model)
-        return tflite_path
+        print(f"[edge] TFLite conversion failed: {e}")
+        return None
 
 
 def run_tflite_inference(tflite_path: pathlib.Path, x_seqs: np.ndarray) -> np.ndarray:
@@ -257,7 +260,7 @@ def run_phase10_profiling(
         seq_len = meta["seq_len"]
         
         # Build sequence for single inference
-        x_seq_single = np.repeat(x_single, seq_len, axis=0).reshape(1, seq_len, len(feat_cols))
+        x_seq_single = np.repeat(x_single, seq_len, axis=0).reshape(1, seq_len, len(feat_cols)).astype(np.float32)
         
         # We wrap prediction to ignore verbose
         def predict_keras(x):
