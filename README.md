@@ -25,6 +25,8 @@ The dataset (`scio_bench_dataset.csv`) contains ~3,200 rows with **5 real anomal
 
 ## Quick Setup (< 5 steps)
 
+The SCIO-Bench pipeline has been engineered securely into fully modular Python packages for reproducibility. You can execute the entire pipeline via terminal or using the master wrapper notebook.
+
 ```bash
 # 1. Clone the repository
 git clone https://github.com/<username>/scio-anomaly-benchmark.git
@@ -36,11 +38,16 @@ pip install -r requirements.txt
 # 3. Add your Kaggle API key
 mkdir -p ~/.kaggle && cp kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json
 
-# 4. Run the master notebook
+# 4. Open the master notebook
 jupyter notebook notebooks/scio_anomaly_benchmark.ipynb
-# OR run on Google Colab (see notebook for Colab setup cell)
 
-# 5. All outputs are generated in outputs/{dataset,results,figures}/
+# OR You can run each phase independently:
+# python -m src.data.preprocess
+# python -m src.data.augmentation
+# ...
+# python -m src.visualization.plots
+
+# 6. All outputs are directly exported to outputs/{dataset,results,figures}/
 ```
 
 ---
