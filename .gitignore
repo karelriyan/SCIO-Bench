@@ -36,3 +36,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# KEY
+github_key.md
+setup_kaggle.py
