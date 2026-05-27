@@ -2,7 +2,7 @@
 
 > **A Labeled Benchmark Dataset and Comparative Study for Anomaly Detection in Off-Grid Renewable Energy IoT Monitoring**
 
-[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19414961-darkgreen)](https://doi.org/10.5281/zenodo.19414961)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20406391-darkgreen)](https://doi.org/10.5281/zenodo.20406391)
 [![Paper: IEEE IoT Journal (Under Review)](https://img.shields.io/badge/Paper-IEEE%20IoT%20Journal-red.svg)]()
 [![License: MIT](https://img.shields.io/badge/Code%20License-MIT-darkblue.svg)](LICENSE)
 [![Data License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
@@ -103,7 +103,7 @@ SCIO-Bench/
 
 - All random seeds: `random_state=42`, `np.random.seed(42)`
 - Chronological train/val/test split (no data leakage)
-- Dataset available on Zenodo: [DOI: 10.5281/zenodo.19414961]
+- Paper available on Zenodo: [DOI: 10.5281/zenodo.20406391]
 
 ---
 
@@ -115,7 +115,7 @@ SCIO-Bench/
   author  = {Riyan, Karel Tsalasatir and Setyoko, Muhammad Azka Mauzaky and Ulumudin, Ihya},
   journal = {Zenodo (Preprint)},
   year    = {2026},
-  doi     = {10.5281/zenodo.19414961}
+  doi     = {10.5281/zenodo.20406391}
 }
 ```
 
