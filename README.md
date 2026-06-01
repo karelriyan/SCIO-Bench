@@ -32,8 +32,8 @@ The SCIO-Bench pipeline has been engineered securely into fully modular Python p
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/<username>/scio-anomaly-benchmark.git
-cd scio-anomaly-benchmark
+[git clone https://github.com/<username>/scio-anomaly-benchmark.git](https://github.com/karelriyan/SCIO-Bench.git)
+cd SCIO-Bench
 
 # 2. Install dependencies
 pip install -r requirements.txt
