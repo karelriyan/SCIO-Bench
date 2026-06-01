@@ -135,6 +135,17 @@ def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
     df["hour_cos"]   = np.cos(2 * np.pi * ts.dt.hour / 24)
     df["minute_sin"] = np.sin(2 * np.pi * minute_of_day / total_minutes)
     df["minute_cos"] = np.cos(2 * np.pi * minute_of_day / total_minutes)
+
+    # Night mask feature
+    is_night = ((ts.dt.hour >= 18) | (ts.dt.hour <= 5)) & (df["irradiance"] == 0)
+    df["is_night"] = is_night.astype(int)
+    
+    # Suppress delta variations during the night to avoid false alarms
+    if "mppt_w_delta" in df.columns:
+        df.loc[is_night, "mppt_w_delta"] = 0.0
+    if "volt_v_delta" in df.columns:
+        df.loc[is_night, "volt_v_delta"] = 0.0
+
     return df
 
 
@@ -233,7 +244,7 @@ def fit_and_scale(
     feature_cols = [c for c in all_cols
                     if c not in META_COLS
                     and train[c].dtype in (np.float64, np.float32, np.int64, np.int32)
-                    and c != "is_low_irradiance_period"]  # already binary
+                    and c not in ["is_low_irradiance_period", "is_night"]]  # already binary
 
     scaler = StandardScaler()
     train[feature_cols] = scaler.fit_transform(train[feature_cols])

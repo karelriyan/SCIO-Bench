@@ -151,13 +151,19 @@ def _apply_rules(df: pd.DataFrame, t: RuleThresholds) -> pd.Series:
     n = len(df)
     flags = np.zeros(n, dtype=bool)
 
+    is_night_mask = df["is_night"].values == 1 if "is_night" in df.columns else np.zeros(n, dtype=bool)
+
     # R1: Negative power output
     if "mppt_w" in df.columns:
-        flags |= df["mppt_w"].values < -1.0   # allow -1W sensor noise
+        r1_flags = df["mppt_w"].values < -1.0   # allow -1W sensor noise
+        r1_flags &= ~is_night_mask
+        flags |= r1_flags
 
     # R2: Sudden power change (>MAD×k)
     if "mppt_w_delta" in df.columns:
-        flags |= df["mppt_w_delta"].abs().values > t.r2_power_delta
+        r2_flags = df["mppt_w_delta"].abs().values > t.r2_power_delta
+        r2_flags &= ~is_night_mask
+        flags |= r2_flags
 
     # R3: Rapid battery drain (SOC drops >threshold per tick)
     if "batt_delta" in df.columns:
@@ -175,7 +181,9 @@ def _apply_rules(df: pd.DataFrame, t: RuleThresholds) -> pd.Series:
 
     # R5: Voltage jump/drift
     if "volt_v_delta" in df.columns:
-        flags |= df["volt_v_delta"].abs().values > t.r5_volt_jump
+        r5_flags = df["volt_v_delta"].abs().values > t.r5_volt_jump
+        r5_flags &= ~is_night_mask
+        flags |= r5_flags
 
     # R6: Physics residual spike → FDI
     if "physics_residual" in df.columns:
@@ -239,9 +247,14 @@ class RuleBasedDetector:
             "r6": ("physics_residual",lambda x: (x.abs() > t.r6_physics_residual).astype(int)),
         }
         scores = np.zeros(len(df))
+        is_night_mask = df["is_night"].values == 1 if "is_night" in df.columns else np.zeros(len(df), dtype=bool)
+
         for name, (col, fn) in cols.items():
             if col in df.columns:
-                scores += fn(df[col]).values
+                res = fn(df[col]).values
+                if name in ["r1", "r2", "r5"]:
+                    res[is_night_mask] = 0
+                scores += res
         return scores / 7.0   # normalise to [0,1]
 
     def evaluate(

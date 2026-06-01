@@ -15,7 +15,7 @@
 
 ## Overview
 
-SCIO-Bench is a **publicly available labeled synthetic dataset** and comparative benchmark for anomaly detection in off-grid solar+battery IoT telemetry. It evaluates four approaches:
+SCIO-Bench is a **publicly available labeled synthetic dataset** and comparative benchmark for anomaly detection in off-grid solar+battery IoT telemetry. This research exposes the critical limitations of using purely unsupervised machine learning on raw electrical telemetry, demonstrating how fundamental physics features can stop cyber-attacks while meteorological variances naturally break detection models. It evaluates four approaches:
 
 1. **Rule-Based Threshold** (SCIO M1 baseline) — MAD-based rules
 2. **Isolation Forest** — classical unsupervised ML
