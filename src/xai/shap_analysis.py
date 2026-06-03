@@ -16,18 +16,19 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from src import config
+
 warnings.filterwarnings("ignore")
 
 try:
     import shap
     _HAS_SHAP = True
 except ImportError:
-    import builtins
     _HAS_SHAP = False
     print("[shap_xai] Warning: shap library not installed. Running dummy mode.")
 
-SPLITS_DIR  = pathlib.Path("data/splits")
-RESULTS_DIR = pathlib.Path("outputs/results")
+SPLITS_DIR  = config.SPLITS_DIR
+RESULTS_DIR = config.RESULTS_DIR
 
 LABEL_COLS = ["is_anomaly", "anomaly_type", "is_weather_event",
               "timestamp", "device_id", "protocol"]

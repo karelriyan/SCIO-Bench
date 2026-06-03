@@ -36,6 +36,8 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import StratifiedKFold
 
+from src import config
+
 warnings.filterwarnings("ignore")
 
 try:

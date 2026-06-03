@@ -26,32 +26,36 @@ The dataset (`scio_bench_dataset.csv`) contains ~3,200 rows with **5 real anomal
 
 ---
 
-## Quick Setup (< 5 steps)
+## Quick Setup
 
-The SCIO-Bench pipeline has been engineered securely into fully modular Python packages for reproducibility. You can execute the entire pipeline via terminal or using the master wrapper notebook.
+The SCIO-Bench pipeline has been engineered into fully modular Python packages for reproducibility. You can execute the entire pipeline via the master notebook or run each phase independently.
 
 ```bash
 # 1. Clone the repository
-[git clone https://github.com/<username>/scio-anomaly-benchmark.git](https://github.com/karelriyan/SCIO-Bench.git)
+git clone https://github.com/karelriyan/SCIO-Bench.git
 cd SCIO-Bench
 
 # 2. Install dependencies
-pip install -r requirements.txt
+pip install -e .
 
-# 3. Add your Kaggle API key
+# 3. Add your Kaggle API key (or run: python setup_kaggle.py)
 mkdir -p ~/.kaggle && cp kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json
 
 # 4. Open the master notebook
 jupyter notebook notebooks/scio_anomaly_benchmark.ipynb
 
-# OR You can run each phase independently:
+# 5. Or run each phase independently via terminal:
 # python -m src.data.preprocess
 # python -m src.data.augmentation
-# ...
+# python -m src.data.anomaly_injection
+# python -m src.data.feature_engineering
+# python -m src.models.rule_based
+# python -m src.models.classical_ml
+# python -m src.models.lstm_autoencoder
 # python -m src.visualization.plots
-
-# 6. All outputs are directly exported to outputs/{dataset,results,figures}/
 ```
+
+All outputs are exported to `outputs/{dataset,results,figures}/`.
 
 ---
 
@@ -101,7 +105,7 @@ SCIO-Bench/
 
 ## Reproducibility
 
-- All random seeds: `random_state=42`, `np.random.seed(42)`
+- All random seeds: `random_state=42`, `np.random.default_rng(42)`
 - Chronological train/val/test split (no data leakage)
 - Paper available on Zenodo: [DOI: 10.5281/zenodo.20406391]
 

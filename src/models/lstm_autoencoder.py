@@ -32,26 +32,29 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import f1_score, precision_score, recall_score
 
+from src import config
+
 # Suppress TF logs before importing
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 warnings.filterwarnings("ignore")
 
-SPLITS_DIR  = pathlib.Path("data/splits")
-RESULTS_DIR = pathlib.Path("outputs/results")
-MODEL_PATH  = pathlib.Path("outputs/results/lstm_ae_model.keras")
+SPLITS_DIR  = config.SPLITS_DIR
+RESULTS_DIR = config.RESULTS_DIR
+MODEL_PATH  = config.RESULTS_DIR / "lstm_ae_model.keras"
 
-# ─── Hyper-parameters ─────────────────────────────────────────────────────────
+# ─── Hyper-parameters (from config) ───────────────────────────────────────────
 
-SEQ_LEN    = 24     # 12 hours at 30-min resolution
-BATCH_SIZE = 64
-EPOCHS     = 50     # EarlyStopping will cut this short
-LATENT_DIM = 16
-ENC_UNITS  = [64, 32]
-DEC_UNITS  = [32, 64]
-PATIENCE   = 5      # EarlyStopping patience
+_AE_CFG = config.LSTMAEConfig()
 
-LABEL_COLS = ["is_anomaly", "anomaly_type", "is_weather_event",
-              "timestamp", "device_id", "protocol"]
+SEQ_LEN    = _AE_CFG.seq_len
+BATCH_SIZE = _AE_CFG.batch_size
+EPOCHS     = _AE_CFG.epochs
+LATENT_DIM = _AE_CFG.latent_dim
+ENC_UNITS  = list(_AE_CFG.enc_units)
+DEC_UNITS  = list(_AE_CFG.dec_units)
+PATIENCE   = _AE_CFG.patience
+
+LABEL_COLS = config.LABEL_COLS
 
 
 # ─── Feature helpers ─────────────────────────────────────────────────────────

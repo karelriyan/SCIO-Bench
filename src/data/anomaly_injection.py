@@ -26,27 +26,11 @@ import pandas as pd
 
 # ─── Proportions ──────────────────────────────────────────────────────────────
 
-PROPORTIONS = {
-    "A1": 0.020,   # panel_degradation
-    "A2": 0.015,   # sudden_drop
-    "A3": 0.020,   # battery_fault
-    "A4": 0.015,   # sensor_drift
-    "A5": 0.020,   # offline
-    "A6": 0.150,   # low_irradiance  (normal weather — NOT anomaly)
-    "A7": 0.010,   # false_data_injection
-}
+from src import config
 
-ANOMALY_LABEL_MAP = {
-    "A1": "panel_degradation",
-    "A2": "sudden_drop",
-    "A3": "battery_fault",
-    "A4": "sensor_drift",
-    "A5": "offline",
-    "A6": "low_irradiance",   # is_anomaly=False
-    "A7": "false_data_injection",
-}
-
-DATA_DIR = pathlib.Path("data/processed")
+PROPORTIONS = config.ANOMALY_PROPORTIONS
+ANOMALY_SEGMENT_LEN = config.ANOMALY_SEGMENT_LEN
+DATA_DIR = config.PROCESSED_DIR
 
 
 # ─── Segment selector ─────────────────────────────────────────────────────────
@@ -96,46 +80,41 @@ def _select_segments(
 
 # ─── Individual Injectors ─────────────────────────────────────────────────────
 
-def _inject_a1_panel_degradation(df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
-    """A1: Gradual 30-50% mppt_w decay over 6h (12 ticks × 30min)."""
+def _get_segments(df: pd.DataFrame, code: str, rng: np.random.Generator) -> list[np.ndarray]:
+    """Helper: select non-overlapping segments for anomaly type *code*."""
     n = len(df)
     occupied = df["anomaly_type"].ne("normal").to_numpy().copy()
-    segs = _select_segments(n, PROPORTIONS["A1"], 12, rng, occupied)
+    return _select_segments(
+        n, PROPORTIONS[code], ANOMALY_SEGMENT_LEN[code], rng, occupied
+    )
 
-    for seg in segs:
+
+def _inject_a1_panel_degradation(df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
+    """A1: Gradual 30-50% mppt_w decay over 6h (12 ticks × 30min)."""
+    for seg in _get_segments(df, "A1", rng):
         decay = np.linspace(1.0, rng.uniform(0.50, 0.70), len(seg))
         df.loc[seg, "mppt_w"]   *= decay
         df.loc[seg, "prod_wh"]  *= decay
-        df.loc[seg, "anomaly_type"]    = "panel_degradation"
-        df.loc[seg, "is_anomaly"]      = True
-
+        df.loc[seg, "anomaly_type"] = "panel_degradation"
+        df.loc[seg, "is_anomaly"]   = True
     return df
 
 
 def _inject_a2_sudden_drop(df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
     """A2: Instant 60-80% power drop for 1-3 ticks."""
-    n = len(df)
-    occupied = df["anomaly_type"].ne("normal").to_numpy().copy()
-    segs = _select_segments(n, PROPORTIONS["A2"], 2, rng, occupied)
-
-    for seg in segs:
+    for seg in _get_segments(df, "A2", rng):
         drop = rng.uniform(0.20, 0.40)   # keep 20-40% of power
         df.loc[seg, "mppt_w"]  *= drop
         df.loc[seg, "prod_wh"] *= drop
         df.loc[seg, "volt_v"]  *= rng.uniform(0.85, 0.95)
         df.loc[seg, "anomaly_type"] = "sudden_drop"
         df.loc[seg, "is_anomaly"]   = True
-
     return df
 
 
 def _inject_a3_battery_fault(df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
     """A3: Rapid SOC drop (>5%/tick) OR SOC stuck at fixed value."""
-    n = len(df)
-    occupied = df["anomaly_type"].ne("normal").to_numpy().copy()
-    segs = _select_segments(n, PROPORTIONS["A3"], 8, rng, occupied)
-
-    for seg in segs:
+    for seg in _get_segments(df, "A3", rng):
         fault_type = rng.choice(["rapid_drop", "stuck"])
         if fault_type == "rapid_drop":
             start_soc = df.loc[seg[0], "batt_pct"]
@@ -143,54 +122,39 @@ def _inject_a3_battery_fault(df: pd.DataFrame, rng: np.random.Generator) -> pd.D
             new_soc = [max(5.0, start_soc - drop_per_tick * i) for i in range(len(seg))]
             df.loc[seg, "batt_pct"] = new_soc
         else:
-            stuck_val = rng.uniform(20.0, 60.0)
-            df.loc[seg, "batt_pct"] = stuck_val
-
+            df.loc[seg, "batt_pct"] = rng.uniform(20.0, 60.0)
         df.loc[seg, "anomaly_type"] = "battery_fault"
         df.loc[seg, "is_anomaly"]   = True
-
     return df
 
 
 def _inject_a4_sensor_drift(df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
     """A4: ±15% persistent volt_v offset (calibration error / loose connection)."""
-    n = len(df)
-    occupied = df["anomaly_type"].ne("normal").to_numpy().copy()
-    segs = _select_segments(n, PROPORTIONS["A4"], 6, rng, occupied)
-
-    for seg in segs:
+    for seg in _get_segments(df, "A4", rng):
         drift = rng.uniform(0.85, 1.15)   # ±15%
         if rng.random() < 0.5:
             drift = 1.0 / drift            # also allow downward drift
-        df.loc[seg, "volt_v"]   *= drift
-        df.loc[seg, "curr_a"]   /= drift   # P stays same, P=VI → I adjusts
+        df.loc[seg, "volt_v"] *= drift
+        df.loc[seg, "curr_a"] /= drift   # P stays same, P=VI → I adjusts
         df.loc[seg, "anomaly_type"] = "sensor_drift"
         df.loc[seg, "is_anomaly"]   = True
-
     return df
 
 
 def _inject_a5_offline(df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
     """A5: Device offline — last-value-held for 3-5 ticks (mimics NaN filled by sensor)."""
-    n = len(df)
-    occupied = df["anomaly_type"].ne("normal").to_numpy().copy()
-    segs = _select_segments(n, PROPORTIONS["A5"], 4, rng, occupied)
     sensor_cols = ["mppt_w", "prod_wh", "volt_v", "curr_a",
                    "batt_pct", "temp_c", "irradiance"]
-
-    for seg in segs:
+    for seg in _get_segments(df, "A5", rng):
         if seg[0] > 0:
-            # Hold last known value (simulates frozen telemetry)
             last_vals = df.loc[seg[0] - 1, sensor_cols]
             for col in sensor_cols:
                 df.loc[seg, col] = last_vals[col]
         else:
             for col in sensor_cols:
                 df.loc[seg, col] = 0.0     # edge case: start of dataset
-
-        df.loc[seg, "anomaly_type"]    = "offline"
-        df.loc[seg, "is_anomaly"]      = True
-
+        df.loc[seg, "anomaly_type"] = "offline"
+        df.loc[seg, "is_anomaly"]   = True
     return df
 
 
@@ -200,21 +164,14 @@ def _inject_a6_low_irradiance(df: pd.DataFrame, rng: np.random.Generator) -> pd.
     Simulates prolonged tropical cloud cover (12–48h = 24–96 ticks).
     Model must NOT flag these as anomalies (used for FPR evaluation).
     """
-    n = len(df)
-    # A6 only overlays indices not already occupied by A1-A5/A7
-    occupied = df["anomaly_type"].ne("normal").to_numpy().copy()
-    segs = _select_segments(n, PROPORTIONS["A6"], 48, rng, occupied)
-
-    for seg in segs:
+    for seg in _get_segments(df, "A6", rng):
         reduction = rng.uniform(0.20, 0.50)   # keep 20-50% of irradiance/power
         df.loc[seg, "irradiance"] *= reduction
         df.loc[seg, "mppt_w"]     *= reduction
         df.loc[seg, "prod_wh"]    *= reduction
-        # A6 is NOT an anomaly — it is a normal weather state
         df.loc[seg, "anomaly_type"]    = "low_irradiance"
         df.loc[seg, "is_anomaly"]      = False
         df.loc[seg, "is_weather_event"] = True
-
     return df
 
 
@@ -225,11 +182,7 @@ def _inject_a7_false_data_injection(df: pd.DataFrame, rng: np.random.Generator) 
     Both volt_v and curr_a individually appear within normal ranges.
     Rule-based methods will likely miss this; physics_residual should catch it.
     """
-    n = len(df)
-    occupied = df["anomaly_type"].ne("normal").to_numpy().copy()
-    segs = _select_segments(n, PROPORTIONS["A7"], 3, rng, occupied)
-
-    for seg in segs:
+    for seg in _get_segments(df, "A7", rng):
         volt_boost  = rng.uniform(1.10, 1.20)   # volt_v +10-20%
         curr_reduce = rng.uniform(0.50, 0.70)   # curr_a -30-50%
         df.loc[seg, "volt_v"] *= volt_boost
@@ -237,7 +190,6 @@ def _inject_a7_false_data_injection(df: pd.DataFrame, rng: np.random.Generator) 
         # mppt_w intentionally NOT changed → creates physics_residual spike
         df.loc[seg, "anomaly_type"] = "false_data_injection"
         df.loc[seg, "is_anomaly"]   = True
-
     return df
 
 
@@ -280,7 +232,7 @@ def inject_all_anomalies(
     Returns:
         Combined labeled DataFrame (~3264 rows).
     """
-    np.random.seed(random_seed)   # global seed for reproducibility
+    # RNG is localised per-plant via default_rng — no global state pollution
 
     def _inject_one_plant(df: pd.DataFrame, plant_seed: int) -> pd.DataFrame:
         rng = np.random.default_rng(plant_seed)

@@ -31,18 +31,14 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.metrics import f1_score, precision_score, recall_score
 
+from src import config
+
 warnings.filterwarnings("ignore")
 
-SPLITS_DIR  = pathlib.Path("data/splits")
-RESULTS_DIR = pathlib.Path("outputs/results")
+SPLITS_DIR  = config.SPLITS_DIR
+RESULTS_DIR = config.RESULTS_DIR
 
-# ─── Feature columns used for ML ─────────────────────────────────────────────
-# Same 35 columns produced by feature_engineering.py (after scaler)
-# Excludes timestamp, device_id, protocol, and label columns.
-# Loaded dynamically from the scaler pickle if available.
-
-LABEL_COLS = ["is_anomaly", "anomaly_type", "is_weather_event",
-              "timestamp", "device_id", "protocol"]
+LABEL_COLS = config.LABEL_COLS
 
 
 def _get_feature_cols(df: pd.DataFrame) -> list[str]:

@@ -13,11 +13,13 @@ from sklearn.metrics import roc_curve, auc
 import warnings
 import shap
 
+from src import config
+
 warnings.filterwarnings("ignore")
 
-SPLITS_DIR = pathlib.Path("data/splits")
-RESULTS_DIR = pathlib.Path("outputs/results")
-FIG_DIR = pathlib.Path("outputs/figures")
+SPLITS_DIR = config.SPLITS_DIR
+RESULTS_DIR = config.RESULTS_DIR
+FIG_DIR = config.FIGURES_DIR
 FIG_DIR.mkdir(parents=True, exist_ok=True)
 
 sns.set_theme(style="whitegrid", context="paper", font_scale=1.2)

@@ -27,6 +27,8 @@ import pathlib
 import numpy as np
 import pandas as pd
 
+from src import config
+
 # ─── Constants ────────────────────────────────────────────────────────────────
 
 # Battery parameters (100Ah × 24V nominal = 2400 Wh)
@@ -45,7 +47,7 @@ RSSI_MEAN  = -70
 RSSI_STD   = 15
 RSSI_4G_THRESHOLD = -80         # below → switch to 4G (worse LoRa)
 
-DATA_DIR = pathlib.Path("data/processed")
+DATA_DIR = config.PROCESSED_DIR
 
 
 # ─── Battery SOC Simulation (non-linear, from framework §5.2) ────────────────

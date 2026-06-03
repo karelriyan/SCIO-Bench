@@ -22,50 +22,19 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from src import config
+
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-RAW_DIR = pathlib.Path("data/raw")
-OUT_DIR = pathlib.Path("data/processed")
+RAW_DIR = config.RAW_DIR
+OUT_DIR = config.PROCESSED_DIR
 
-# Expected raw files per plant
-PLANT_FILES = {
-    1: {
-        "gen": "Plant_1_Generation_Data.csv",
-        "weather": "Plant_1_Weather_Sensor_Data.csv",
-    },
-    2: {
-        "gen": "Plant_2_Generation_Data.csv",
-        "weather": "Plant_2_Weather_Sensor_Data.csv",
-    },
-}
+PLANT_FILES = config.PLANT_FILES
+RENAME_MAP = config.RENAME_MAP
+SCIO_COLUMNS = config.SCIO_BASE_COLUMNS
 
-# Kaggle → SCIO column rename mapping
-RENAME_MAP = {
-    "DC_POWER": "mppt_kw",             # kW — converted to W below
-    "AC_POWER": "ac_power_kw",         # kW — kept for reference
-    "DAILY_YIELD": "daily_yield_kwh",
-    "TOTAL_YIELD": "total_yield_kwh",
-    "MODULE_TEMPERATURE": "temp_c",
-    "IRRADIATION": "irradiance",       # W/m²
-    "AMBIENT_TEMPERATURE": "ambient_temp_c",
-}
-
-# Columns to keep as SCIO features (after rename)
-SCIO_COLUMNS = [
-    "timestamp",
-    "device_id",
-    "mppt_w",           # DC Power in Watts (= mppt_kw × 1000)
-    "ac_power_kw",
-    "daily_yield_kwh",
-    "temp_c",
-    "irradiance",
-    "ambient_temp_c",
-]
-
-# Max consecutive NaN ticks to forward-fill (per SRS FR-034)
-FFILL_LIMIT = 2
-# Resample interval (30 minutes, matching SCIO IoT gateway polling)
-RESAMPLE_INTERVAL = "30min"
+FFILL_LIMIT = config.FFILL_LIMIT
+RESAMPLE_INTERVAL = config.RESAMPLE_INTERVAL
 
 
 def _load_plant_csvs(plant_id: int, raw_dir: pathlib.Path) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -82,8 +51,8 @@ def _load_plant_csvs(plant_id: int, raw_dir: pathlib.Path) -> tuple[pd.DataFrame
             )
 
     # Explicit format strings per plant / file to accelerate parsing
-    gen_fmt = "%d-%m-%Y %H:%M" if plant_id == 1 else "%Y-%m-%d %H:%M:%S"
-    wx_fmt = "%Y-%m-%d %H:%M:%S"
+    gen_fmt = files["gen_date_fmt"]
+    wx_fmt = files["weather_date_fmt"]
 
     gen_df = pd.read_csv(gen_path)
     gen_df["DATE_TIME"] = pd.to_datetime(gen_df["DATE_TIME"], format=gen_fmt)
@@ -133,7 +102,9 @@ def _handle_nan_inf(df: pd.DataFrame) -> pd.DataFrame:
     df["_had_nan"] = df.drop(columns=["timestamp"], errors="ignore").isnull().any(axis=1)
 
     # Step 2: Forward-fill up to limit (pandas 2.x: ffill() replaces fillna(method=))
-    non_ts_cols = [c for c in df.columns if c not in ("timestamp", "_had_nan")]
+    # Only operate on numeric columns
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    non_ts_cols = [c for c in numeric_cols if c not in ("timestamp", "_had_nan")]
     df[non_ts_cols] = df[non_ts_cols].ffill(limit=FFILL_LIMIT)
 
     # Step 3: Remaining NaN (gap > 2) → diurnal median fill (grouped by hour of day)

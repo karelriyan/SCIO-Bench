@@ -18,8 +18,10 @@ import stat
 import shutil
 import subprocess
 
+from src import config
+
 DATASET_SLUG = "anikannal/solar-power-generation-data"
-DOWNLOAD_DIR = pathlib.Path("data/raw")
+DOWNLOAD_DIR = config.RAW_DIR
 EXPECTED_FILES = [
     "Plant_1_Generation_Data.csv",
     "Plant_1_Weather_Sensor_Data.csv",

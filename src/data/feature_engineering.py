@@ -46,13 +46,15 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+from src import config
+
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 
-DATASET_PATH = pathlib.Path("outputs/dataset/scio_bench_dataset.csv")
-SPLITS_DIR   = pathlib.Path("data/splits")
-SCALER_PATH  = pathlib.Path("outputs/dataset/scaler.pkl")
+DATASET_PATH = config.OUTPUTS_DIR / "dataset" / "scio_bench_dataset.csv"
+SPLITS_DIR   = config.SPLITS_DIR
+SCALER_PATH  = config.OUTPUTS_DIR / "dataset" / "scaler.pkl"
 
 # ─── Split ratios ─────────────────────────────────────────────────────────────
 

@@ -15,10 +15,12 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from src import config
+
 warnings.filterwarnings("ignore")
 
-SPLITS_DIR  = pathlib.Path("data/splits")
-RESULTS_DIR = pathlib.Path("outputs/results")
+SPLITS_DIR  = config.SPLITS_DIR
+RESULTS_DIR = config.RESULTS_DIR
 
 def build_sequences(
     data:    np.ndarray,

@@ -28,6 +28,8 @@ from sklearn.metrics import f1_score
 import joblib
 import pickle
 
+from src import config
+
 warnings.filterwarnings("ignore")
 
 SPLITS_DIR  = pathlib.Path("data/splits")

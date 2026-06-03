@@ -32,11 +32,13 @@ from sklearn.metrics import (
     confusion_matrix, classification_report,
 )
 
+from src import config
+
 warnings.filterwarnings("ignore")
 
-SPLITS_DIR   = pathlib.Path("data/splits")
-RESULTS_DIR  = pathlib.Path("outputs/results")
-MODEL_DIR    = pathlib.Path("outputs/results")
+SPLITS_DIR   = config.SPLITS_DIR
+RESULTS_DIR  = config.RESULTS_DIR
+MODEL_DIR    = config.RESULTS_DIR
 
 # ─── Threshold Dataclass ─────────────────────────────────────────────────────
 
@@ -59,7 +61,11 @@ class RuleThresholds:
 
 # ─── MAD Helper ──────────────────────────────────────────────────────────────
 
-def _mad_threshold(series: np.ndarray, k: float = 3.5, eps: float = 1e-5) -> float:
+def _mad_threshold(
+    series: np.ndarray,
+    k: float = config.RuleBasedConfig().k,
+    eps: float = config.RuleBasedConfig().eps,
+) -> float:
     """
     Median Absolute Deviation threshold.
     threshold = median(|x - median(x)|) × k
