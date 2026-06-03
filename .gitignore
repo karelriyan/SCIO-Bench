@@ -33,6 +33,11 @@ outputs/
 Thumbs.db
 *.Zone.Identifier
 
+# Kilo project config — keep agents but ignore deps
+.kilo/node_modules/
+.kilo/package-lock.json
+.kilo/package.json
+
 # IDE
 .vscode/
 .idea/

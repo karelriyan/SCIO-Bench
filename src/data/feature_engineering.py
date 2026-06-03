@@ -102,15 +102,23 @@ def add_rolling_features(df: pd.DataFrame, window: int = 12) -> pd.DataFrame:
     for col in roll_cols:
         # shift(1) gives NaN at row 0 — bfill before rolling so row 0 has a value
         shifted = df.groupby("device_id")[col].shift(1).bfill()
+        
+        # Native vectorised groupby rolling mean
         df[f"{col}_mean_6h"] = (
             shifted
-            .groupby(df["device_id"])
-            .transform(lambda x: x.rolling(window, min_periods=1).mean())
+            .groupby(df["device_id"], group_keys=False)
+            .rolling(window, min_periods=1)
+            .mean()
+            .reset_index(level=0, drop=True)
         )
+        # Native vectorised groupby rolling std
         df[f"{col}_std_6h"] = (
             shifted
-            .groupby(df["device_id"])
-            .transform(lambda x: x.rolling(window, min_periods=1).std().fillna(0.0))
+            .groupby(df["device_id"], group_keys=False)
+            .rolling(window, min_periods=1)
+            .std()
+            .fillna(0.0)
+            .reset_index(level=0, drop=True)
         )
     return df
 
@@ -137,7 +145,10 @@ def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
     df["minute_cos"] = np.cos(2 * np.pi * minute_of_day / total_minutes)
 
     # Night mask feature
-    is_night = ((ts.dt.hour >= 18) | (ts.dt.hour <= 5)) & (df["irradiance"] == 0)
+    if "irradiance" in df.columns:
+        is_night = ((ts.dt.hour >= 18) | (ts.dt.hour <= 5)) & (df["irradiance"] == 0)
+    else:
+        is_night = (ts.dt.hour >= 18) | (ts.dt.hour <= 5)
     df["is_night"] = is_night.astype(int)
     
     # Suppress delta variations during the night to avoid false alarms

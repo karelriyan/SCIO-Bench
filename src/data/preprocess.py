@@ -69,7 +69,7 @@ RESAMPLE_INTERVAL = "30min"
 
 
 def _load_plant_csvs(plant_id: int, raw_dir: pathlib.Path) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Load generation and weather CSVs for a given plant."""
+    """Load generation and weather CSVs for a given plant with explicit date formats."""
     files = PLANT_FILES[plant_id]
     gen_path = raw_dir / files["gen"]
     weather_path = raw_dir / files["weather"]
@@ -81,8 +81,16 @@ def _load_plant_csvs(plant_id: int, raw_dir: pathlib.Path) -> tuple[pd.DataFrame
                 "Run download first: python -m src.data.download"
             )
 
-    gen_df = pd.read_csv(gen_path, parse_dates=["DATE_TIME"])
-    weather_df = pd.read_csv(weather_path, parse_dates=["DATE_TIME"])
+    # Explicit format strings per plant / file to accelerate parsing
+    gen_fmt = "%d-%m-%Y %H:%M" if plant_id == 1 else "%Y-%m-%d %H:%M:%S"
+    wx_fmt = "%Y-%m-%d %H:%M:%S"
+
+    gen_df = pd.read_csv(gen_path)
+    gen_df["DATE_TIME"] = pd.to_datetime(gen_df["DATE_TIME"], format=gen_fmt)
+
+    weather_df = pd.read_csv(weather_path)
+    weather_df["DATE_TIME"] = pd.to_datetime(weather_df["DATE_TIME"], format=wx_fmt)
+
     return gen_df, weather_df
 
 
@@ -128,9 +136,15 @@ def _handle_nan_inf(df: pd.DataFrame) -> pd.DataFrame:
     non_ts_cols = [c for c in df.columns if c not in ("timestamp", "_had_nan")]
     df[non_ts_cols] = df[non_ts_cols].ffill(limit=FFILL_LIMIT)
 
-    # Step 3: Remaining NaN (gap > 2) → median fill
-    medians = df[non_ts_cols].median()
-    df[non_ts_cols] = df[non_ts_cols].fillna(medians)
+    # Step 3: Remaining NaN (gap > 2) → diurnal median fill (grouped by hour of day)
+    # This prevents physical inconsistencies like daylight irradiance at midnight.
+    hours = pd.to_datetime(df["timestamp"]).dt.hour
+    diurnal_medians = df.groupby(hours)[non_ts_cols].transform("median")
+    df[non_ts_cols] = df[non_ts_cols].fillna(diurnal_medians)
+
+    # Fallback to global medians in case an entire hour group consists of NaNs
+    global_medians = df[non_ts_cols].median()
+    df[non_ts_cols] = df[non_ts_cols].fillna(global_medians)
 
     # Step 4: Validate
     assert not df[non_ts_cols].isnull().values.any(), \
@@ -153,15 +167,14 @@ def _rename_and_derive(df: pd.DataFrame, plant_id: int) -> pd.DataFrame:
     elif "mppt_w" not in df.columns:
         raise ValueError("[preprocess] DC_POWER / mppt_w column not found!")
 
+    # Clip negative values (sensor noise during darkness → 0)
+    df["mppt_w"] = df["mppt_w"].clip(lower=0.0)
+    if "irradiance" in df.columns:
+        df["irradiance"] = df["irradiance"].clip(lower=0.0)
+
     # Derive prod_wh: approximate via 30-min power integral
     # prod_wh ≈ mppt_w × 0.5 hour (energy in Wh per tick)
     df["prod_wh"] = df["mppt_w"] * 0.5
-
-    # Clip negative values (sensor noise during darkness → 0)
-    df["mppt_w"] = df["mppt_w"].clip(lower=0.0)
-    df["prod_wh"] = df["prod_wh"].clip(lower=0.0)
-    if "irradiance" in df.columns:
-        df["irradiance"] = df["irradiance"].clip(lower=0.0)
 
     # Add device_id
     df["device_id"] = f"SIM_PLANT{plant_id}_INV01"

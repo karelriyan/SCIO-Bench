@@ -59,7 +59,7 @@ class RuleThresholds:
 
 # ─── MAD Helper ──────────────────────────────────────────────────────────────
 
-def _mad_threshold(series: np.ndarray, k: float = 3.5) -> float:
+def _mad_threshold(series: np.ndarray, k: float = 3.5, eps: float = 1e-5) -> float:
     """
     Median Absolute Deviation threshold.
     threshold = median(|x - median(x)|) × k
@@ -68,6 +68,7 @@ def _mad_threshold(series: np.ndarray, k: float = 3.5) -> float:
     """
     med = np.nanmedian(series)
     mad = np.nanmedian(np.abs(series - med))
+    mad = max(mad, eps)  # Prevent zero-variance collapse (e.g. constant signals)
     return float(med + k * mad)
 
 
@@ -251,7 +252,7 @@ class RuleBasedDetector:
 
         for name, (col, fn) in cols.items():
             if col in df.columns:
-                res = fn(df[col]).values
+                res = fn(df[col]).values.copy()
                 if name in ["r1", "r2", "r5"]:
                     res[is_night_mask] = 0
                 scores += res
