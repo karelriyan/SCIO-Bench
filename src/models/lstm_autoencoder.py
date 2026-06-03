@@ -23,9 +23,9 @@ Training:
 Reference: SCIO Research Framework §7.3
 """
 
+import json
 import os
 import pathlib
-import pickle
 import warnings
 
 import numpy as np
@@ -33,6 +33,7 @@ import pandas as pd
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 from src import config
+from src.evaluation.metrics import compute_detection_metrics
 
 # Suppress TF logs before importing
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
@@ -357,35 +358,15 @@ class LSTMAutoencoder:
         pred   = (scores > self.threshold).astype(int)
         y_true = df["is_anomaly"].astype(int).values
 
-        a6_mask     = (df["anomaly_type"] == "low_irradiance").values
-        normal_mask = (~df["is_anomaly"].values)
-
-        fpr_a6     = pred[a6_mask].mean()     if a6_mask.sum()     > 0 else 0.0
-        fpr_global = pred[normal_mask].mean() if normal_mask.sum() > 0 else 0.0
-
-        metrics = {
-            "method":      "lstm_ae",
-            "split":       split_name,
-            "f1":          f1_score(y_true, pred, zero_division=0),
-            "precision":   precision_score(y_true, pred, zero_division=0),
-            "recall":      recall_score(y_true, pred, zero_division=0),
-            "fpr_global":  float(fpr_global),
-            "fpr_a6":      float(fpr_a6),
-            "n_predicted": int(pred.sum()),
-            "n_true":      int(y_true.sum()),
-            "threshold":   self.threshold,
-            "k":           self.k,
-        }
-
-        # Per-type F1
-        for atype in df["anomaly_type"].unique():
-            mask = (df["anomaly_type"] == atype).values
-            if mask.sum() == 0:
-                continue
-            y_t = df.loc[mask, "is_anomaly"].astype(int).values
-            y_p = pred[mask]
-            metrics[f"f1_{atype}"] = f1_score(y_t, y_p, zero_division=0)
-
+        metrics = compute_detection_metrics(
+            y_true=y_true,
+            y_pred=pred,
+            df=df,
+            method="lstm_ae",
+            split_name=split_name
+        )
+        metrics["threshold"] = self.threshold
+        metrics["k"] = self.k
         return metrics
 
     def save(self, path: pathlib.Path = MODEL_PATH) -> None:
@@ -400,9 +381,9 @@ class LSTMAutoencoder:
             "n_features": self.n_features,
             "seq_len":    self.seq_len,
         }
-        meta_path = path.parent / (path.stem + "_meta.pkl")
-        with open(meta_path, "wb") as f:
-            pickle.dump(meta, f)
+        meta_path = path.parent / (path.stem + "_meta.json")
+        with open(meta_path, "w") as f:
+            json.dump(meta, f, indent=4)
         print(f"[lstm_ae] Model saved → {path}")
         print(f"[lstm_ae] Meta  saved → {meta_path}")
 

@@ -10,6 +10,7 @@ Reference: SCIO Research Framework §8.2
 
 import pathlib
 import pickle
+import json
 import warnings
 
 import numpy as np
@@ -60,7 +61,7 @@ def sequences_to_row_scores(
 
 def load_lstm_ae():
     """Load trained LSTM AE model and metadata."""
-    lstm_meta_path  = RESULTS_DIR / "lstm_ae_model_meta.pkl"
+    lstm_meta_path  = RESULTS_DIR / "lstm_ae_model_meta.json"
     lstm_model_path = RESULTS_DIR / "lstm_ae_model.keras"
 
     if not (lstm_model_path.exists() and lstm_meta_path.exists()):
@@ -68,8 +69,8 @@ def load_lstm_ae():
 
     # Only load TF locally when needed to save import time and warnings if not used
     import tensorflow as tf
-    with open(lstm_meta_path, "rb") as f:
-        meta = pickle.load(f)
+    with open(lstm_meta_path, "r") as f:
+        meta = json.load(f)
 
     lstm_model = tf.keras.models.load_model(str(lstm_model_path))
     print("[recon_xai] Loaded LSTM Autoencoder.")

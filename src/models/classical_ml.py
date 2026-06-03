@@ -32,6 +32,7 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 from src import config
+from src.evaluation.metrics import compute_detection_metrics
 
 warnings.filterwarnings("ignore")
 
@@ -59,35 +60,15 @@ def _compute_metrics(
     split: str,
     **extra,
 ) -> dict:
-    """Compute standard metrics dict; same structure as Phase 5."""
-    a6_mask     = (df["anomaly_type"] == "low_irradiance").values
-    normal_mask = (~df["is_anomaly"].values)
-
-    fpr_a6     = y_pred[a6_mask].mean()     if a6_mask.sum()     > 0 else 0.0
-    fpr_global = y_pred[normal_mask].mean() if normal_mask.sum() > 0 else 0.0
-
-    metrics = {
-        "method":      method,
-        "split":       split,
-        "f1":          f1_score(y_true, y_pred, zero_division=0),
-        "precision":   precision_score(y_true, y_pred, zero_division=0),
-        "recall":      recall_score(y_true, y_pred, zero_division=0),
-        "fpr_global":  float(fpr_global),
-        "fpr_a6":      float(fpr_a6),
-        "n_predicted": int(y_pred.sum()),
-        "n_true":      int(y_true.sum()),
-        **extra,
-    }
-
-    # Per-type F1
-    for atype in df["anomaly_type"].unique():
-        mask = (df["anomaly_type"] == atype).values
-        if mask.sum() == 0:
-            continue
-        y_t = df.loc[mask, "is_anomaly"].astype(int).values
-        y_p = y_pred[mask]
-        metrics[f"f1_{atype}"] = f1_score(y_t, y_p, zero_division=0)
-
+    """Compute standard metrics dict using centralized metrics module."""
+    metrics = compute_detection_metrics(
+        y_true=y_true,
+        y_pred=y_pred,
+        df=df,
+        method=method,
+        split_name=split
+    )
+    metrics.update(extra)
     return metrics
 
 

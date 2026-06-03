@@ -23,6 +23,7 @@ Evaluation metrics:
 Reference: SCIO Research Framework §7.4
 """
 
+import json
 import pathlib
 import pickle
 import warnings
@@ -47,8 +48,8 @@ except ImportError:
     _HAS_SMOTE = False
     print("[l2] Warning: imbalanced-learn not installed. SMOTE disabled.")
 
-SPLITS_DIR  = pathlib.Path("data/splits")
-RESULTS_DIR = pathlib.Path("outputs/results")
+SPLITS_DIR  = config.SPLITS_DIR
+RESULTS_DIR = config.RESULTS_DIR
 
 # A6 is a weather event — excluded from L2 typing
 # (L1 should not flag A6; if it does, it's already a FPR issue)
@@ -356,7 +357,7 @@ def run_phase8(
     # ── Load L1 (LSTM-AE) predictions ────────────────────────────────────────
     # Re-run LSTM-AE inference to get fresh l1_pred + l1_scores on test set
     print("[l2] Loading LSTM-AE model for L1 predictions …")
-    lstm_meta_path  = results_dir / "lstm_ae_model_meta.pkl"
+    lstm_meta_path  = results_dir / "lstm_ae_model_meta.json"
     lstm_model_path = results_dir / "lstm_ae_model.keras"
 
     if lstm_model_path.exists() and lstm_meta_path.exists():
@@ -364,8 +365,8 @@ def run_phase8(
         from src.models.lstm_autoencoder import (
             build_sequences, sequences_to_row_scores, _get_feature_cols as _lstm_feat
         )
-        with open(lstm_meta_path, "rb") as f:
-            meta = pickle.load(f)
+        with open(lstm_meta_path, "r") as f:
+            meta = json.load(f)
 
         lstm_model = tf.keras.models.load_model(str(lstm_model_path))
         feat_cols  = meta["feat_cols"]

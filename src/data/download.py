@@ -66,7 +66,7 @@ def _files_already_downloaded(dest: pathlib.Path) -> bool:
 
 
 def download_kaggle_dataset(
-    dest: str | pathlib.Path = "data/raw",
+    dest: str | pathlib.Path = DOWNLOAD_DIR,
     api_key: str | None = None,
     username: str | None = None,
     force: bool = False,

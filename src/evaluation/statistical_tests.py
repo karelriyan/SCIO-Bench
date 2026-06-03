@@ -64,22 +64,11 @@ def _get_l1_test_predictions(test_df: pd.DataFrame) -> dict:
     X = test_df[feat_cols].values
     
     # 2. Rule based
-    rb_path = RESULTS_DIR / "rule_based_model.pkl"
+    rb_path = RESULTS_DIR / "rule_based_model.json"
     if rb_path.exists():
-        from src.models.rule_based import RuleBasedDetector, RuleThresholds
-        
-        # HACK: If the model was pickled while running rule_based.py directly, 
-        # its class module is recorded as __main__. We must map it here so pickle finds it.
-        import sys
-        sys.modules["__main__"].RuleBasedDetector = RuleBasedDetector
-        sys.modules["__main__"].RuleThresholds = RuleThresholds
-        
-        with open(rb_path, "rb") as f:
-            rb_rules = pickle.load(f)
-            # Rule based uses specific columns, we need to reconstruct or simply use its results
-            # Wait, rule_based predict() uses DataFrame directly
-            if hasattr(rb_rules, "predict"):
-                results["Rule-Based"] = rb_rules.predict(test_df)
+        from src.models.rule_based import RuleBasedDetector
+        rb_rules = RuleBasedDetector.load(rb_path)
+        results["Rule-Based"] = rb_rules.predict(test_df)
     
     # 3. Isolation Forest
     if_path = RESULTS_DIR / "isolation_forest_model.pkl"
@@ -92,13 +81,13 @@ def _get_l1_test_predictions(test_df: pd.DataFrame) -> dict:
 
     # 4. LSTM AE
     lstm_path = RESULTS_DIR / "lstm_ae_model.keras"
-    meta_path = RESULTS_DIR / "lstm_ae_model_meta.pkl"
+    meta_path = RESULTS_DIR / "lstm_ae_model_meta.json"
     if lstm_path.exists() and meta_path.exists():
         import os
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
         model = tf.keras.models.load_model(str(lstm_path))
-        with open(meta_path, "rb") as f:
-            meta = pickle.load(f)
+        with open(meta_path, "r") as f:
+            meta = json.load(f)
             
         seq_len = meta["seq_len"]
         threshold = meta["threshold"]
@@ -238,9 +227,9 @@ def compile_table_III() -> pd.DataFrame:
             rows.append({"Method": "Local Outlier Factor", "Hyperparameters": f"neighbors={int(best.get('n_neighbors', 0))}, cont={best.get('contamination', '?')}"})
         except: pass
 
-    if (RESULTS_DIR / "lstm_ae_model_meta.pkl").exists():
-        with open(RESULTS_DIR / "lstm_ae_model_meta.pkl", "rb") as f:
-            meta = pickle.load(f)
+    if (RESULTS_DIR / "lstm_ae_model_meta.json").exists():
+        with open(RESULTS_DIR / "lstm_ae_model_meta.json", "r") as f:
+            meta = json.load(f)
         rows.append({"Method": "LSTM-AE", "Hyperparameters": f"seq_len={meta.get('seq_len', '')}, threshold={meta.get('threshold', 0):.4f}"})
 
     return pd.DataFrame(rows)

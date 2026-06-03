@@ -19,8 +19,8 @@ Threshold calibration:
 Reference: SCIO Research Framework §7.1
 """
 
+import json
 import pathlib
-import pickle
 import warnings
 from dataclasses import dataclass, field
 from typing import Optional
@@ -33,6 +33,7 @@ from sklearn.metrics import (
 )
 
 from src import config
+from src.evaluation.metrics import compute_detection_metrics
 
 warnings.filterwarnings("ignore")
 
@@ -278,54 +279,37 @@ class RuleBasedDetector:
         y_pred = self.predict(df)
         y_true = df["is_anomaly"].astype(int).values
 
-        # FPR@A6 — FPR computed ONLY on A6 (normal weather) rows
-        a6_mask = (df["anomaly_type"] == "low_irradiance").values
-        normal_mask = (~df["is_anomaly"].values)
-
-        fpr_a6 = 0.0
-        if a6_mask.sum() > 0:
-            fpr_a6 = y_pred[a6_mask].mean()    # fraction of A6 flagged as anomaly
-
-        # Global FPR on all normal rows
-        fpr_global = 0.0
-        if normal_mask.sum() > 0:
-            fpr_global = y_pred[normal_mask].mean()
-
-        metrics = {
-            "method":        "rule_based",
-            "split":         split_name,
-            "f1":            f1_score(y_true, y_pred, zero_division=0),
-            "precision":     precision_score(y_true, y_pred, zero_division=0),
-            "recall":        recall_score(y_true, y_pred, zero_division=0),
-            "fpr_global":    fpr_global,
-            "fpr_a6":        fpr_a6,
-            "n_predicted":   int(y_pred.sum()),
-            "n_true":        int(y_true.sum()),
-            "k":             self.k,
-        }
-
-        # Per-type F1 (for Table I in paper)
-        for atype in df["anomaly_type"].unique():
-            mask = (df["anomaly_type"] == atype).values
-            if mask.sum() == 0:
-                continue
-            y_t = (df.loc[mask, "is_anomaly"]).astype(int).values
-            y_p = y_pred[mask]
-            metrics[f"f1_{atype}"] = f1_score(y_t, y_p, zero_division=0)
-
+        metrics = compute_detection_metrics(
+            y_true=y_true,
+            y_pred=y_pred,
+            df=df,
+            method="rule_based",
+            split_name=split_name
+        )
+        metrics["k"] = self.k
         return metrics
 
-    def save(self, path: pathlib.Path = MODEL_DIR / "rule_based_model.pkl") -> None:
+    def save(self, path: pathlib.Path = MODEL_DIR / "rule_based_model.json") -> None:
         path = pathlib.Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "wb") as f:
-            pickle.dump(self, f)
+        # Convert thresholds dataclass to dictionary
+        t_dict = {k: v for k, v in self.thresholds.__dict__.items() if k != "rule_votes"}
+        data = {
+            "k": self.k,
+            "thresholds": t_dict
+        }
+        with open(path, "w") as f:
+            json.dump(data, f, indent=4)
         print(f"[rule_based] Model saved → {path}")
 
     @classmethod
-    def load(cls, path: pathlib.Path = MODEL_DIR / "rule_based_model.pkl") -> "RuleBasedDetector":
-        with open(pathlib.Path(path), "rb") as f:
-            return pickle.load(f)
+    def load(cls, path: pathlib.Path = MODEL_DIR / "rule_based_model.json") -> "RuleBasedDetector":
+        with open(pathlib.Path(path), "r") as f:
+            data = json.load(f)
+        detector = cls(k=data["k"])
+        detector.thresholds = RuleThresholds(**data["thresholds"])
+        detector.is_fitted = True
+        return detector
 
 
 # ─── k-sweep Val Tuning ──────────────────────────────────────────────────────
@@ -403,7 +387,7 @@ def run_phase5(
     detector.fit(train)
 
     test_metrics = detector.evaluate(test, split_name="test")
-    detector.save(results_dir / "rule_based_model.pkl")
+    detector.save(results_dir / "rule_based_model.json")
 
     # Save test metrics
     metrics_df = pd.DataFrame([test_metrics])

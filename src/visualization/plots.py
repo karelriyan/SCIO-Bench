@@ -4,6 +4,7 @@ Generates 5 publication-ready plots.
 """
 
 import pathlib
+import json
 import pickle
 import numpy as np
 import pandas as pd
@@ -64,12 +65,12 @@ def plot_figure_1_roc():
 
     # LSTM Score
     lstm_path = RESULTS_DIR / "lstm_ae_model.keras"
-    meta_path = RESULTS_DIR / "lstm_ae_model_meta.pkl"
+    meta_path = RESULTS_DIR / "lstm_ae_model_meta.json"
     if lstm_path.exists() and meta_path.exists():
         import tensorflow as tf
         model = tf.keras.models.load_model(str(lstm_path))
-        with open(meta_path, "rb") as f:
-            meta = pickle.load(f)
+        with open(meta_path, "r") as f:
+            meta = json.load(f)
             seq_len = meta["seq_len"]
             feat_cols_lstm = meta["feat_cols"]
 

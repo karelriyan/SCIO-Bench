@@ -292,7 +292,7 @@ def print_distribution_report(df: pd.DataFrame) -> None:
 
 def load_and_inject(
     processed_dir: str | pathlib.Path = DATA_DIR,
-    out_dir: str | pathlib.Path = pathlib.Path("outputs/dataset"),
+    out_dir: str | pathlib.Path = config.DATASET_DIR,
     random_seed: int = 42,
     save: bool = True,
 ) -> pd.DataFrame:

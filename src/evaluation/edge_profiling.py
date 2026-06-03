@@ -26,15 +26,16 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import f1_score
 import joblib
+import json
 import pickle
 
 from src import config
 
 warnings.filterwarnings("ignore")
 
-SPLITS_DIR  = pathlib.Path("data/splits")
-RESULTS_DIR = pathlib.Path("outputs/results")
-MODELS_DIR  = pathlib.Path("outputs/results")
+SPLITS_DIR  = config.SPLITS_DIR
+RESULTS_DIR = config.RESULTS_DIR
+MODELS_DIR  = config.RESULTS_DIR
 
 def format_bytes(size: float) -> str:
     """Format bytes to KB/MB."""
@@ -254,11 +255,11 @@ def run_phase10_profiling(
     
     if (results_dir / "lstm_ae_model.keras").exists():
         model_path = results_dir / "lstm_ae_model.keras"
-        meta_path = results_dir / "lstm_ae_model_meta.pkl"
+        meta_path = results_dir / "lstm_ae_model_meta.json"
         lstm_model = tf.keras.models.load_model(str(model_path))
         
-        with open(meta_path, "rb") as f:
-            meta = pickle.load(f)
+        with open(meta_path, "r") as f:
+            meta = json.load(f)
         seq_len = meta["seq_len"]
         
         # Build sequence for single inference
