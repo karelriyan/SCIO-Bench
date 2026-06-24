@@ -17,21 +17,12 @@ import numpy as np
 import pandas as pd
 
 from src import config
+from src.models.lstm_autoencoder import build_sequences
 
 warnings.filterwarnings("ignore")
 
 SPLITS_DIR  = config.SPLITS_DIR
 RESULTS_DIR = config.RESULTS_DIR
-
-def build_sequences(
-    data:    np.ndarray,
-    seq_len: int,
-    step:    int = 1,
-) -> np.ndarray:
-    n = len(data)
-    starts = range(0, n - seq_len + 1, step)
-    seqs   = np.stack([data[i : i + seq_len] for i in starts], axis=0)
-    return seqs.astype(np.float32)
 
 def sequences_to_row_scores(
     seq_errors: np.ndarray,

@@ -33,6 +33,7 @@ import pandas as pd
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 from src import config
+from src.config import get_feature_cols
 from src.evaluation.metrics import compute_detection_metrics
 
 # Suppress TF logs before importing
@@ -56,15 +57,6 @@ DEC_UNITS  = list(_AE_CFG.dec_units)
 PATIENCE   = _AE_CFG.patience
 
 LABEL_COLS = config.LABEL_COLS
-
-
-# ─── Feature helpers ─────────────────────────────────────────────────────────
-
-def _get_feature_cols(df: pd.DataFrame) -> list[str]:
-    return [c for c in df.columns
-            if c not in LABEL_COLS
-            and df[c].dtype in (np.float64, np.float32, np.int64, np.int32, float, int)
-            and c != "is_low_irradiance_period"]
 
 
 # ─── Sequence Builder ─────────────────────────────────────────────────────────
@@ -222,7 +214,7 @@ class LSTMAutoencoder:
             EarlyStopping, ReduceLROnPlateau,
         )
 
-        self.feat_cols  = _get_feature_cols(train_df)
+        self.feat_cols  = get_feature_cols(train_df)
         self.n_features = len(self.feat_cols)
 
         # Normal-only training rows

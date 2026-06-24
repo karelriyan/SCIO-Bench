@@ -4,13 +4,9 @@ Runs a lightweight version of the full SCIO-Bench pipeline on synthetic data
 to verify module interfaces and prevent regression.
 """
 
-import sys
-import pathlib
 import numpy as np
 import pandas as pd
 import pytest
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from src.data.preprocess import _handle_nan_inf, _rename_and_derive
 from src.data.anomaly_injection import inject_all_anomalies

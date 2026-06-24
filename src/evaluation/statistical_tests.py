@@ -20,6 +20,7 @@ import pandas as pd
 from scipy.stats import chi2
 
 from src import config
+from src.config import get_feature_cols
 
 warnings.filterwarnings("ignore")
 
@@ -54,13 +55,8 @@ def _get_l1_test_predictions(test_df: pd.DataFrame) -> dict:
     
     # 1. Truth
     y_true = test_df["is_anomaly"].values
-    
-    # Feature cols
-    label_cols = ["is_anomaly", "anomaly_type", "is_weather_event", 
-                  "timestamp", "device_id", "protocol"]
-    feat_cols = [c for c in test_df.columns if c not in label_cols 
-                 and test_df[c].dtype in (np.float64, np.float32, np.int64, np.int32)
-                 and c != "is_low_irradiance_period"]
+
+    feat_cols = get_feature_cols(test_df)
     X = test_df[feat_cols].values
     
     # 2. Rule based
@@ -88,25 +84,19 @@ def _get_l1_test_predictions(test_df: pd.DataFrame) -> dict:
         model = tf.keras.models.load_model(str(lstm_path))
         with open(meta_path, "r") as f:
             meta = json.load(f)
-            
+
         seq_len = meta["seq_len"]
         threshold = meta["threshold"]
         feat_cols_lstm = meta["feat_cols"]
         X_lstm = test_df[feat_cols_lstm].values.astype(np.float32)
-        
-        from src.models.lstm_autoencoder import build_sequences
-        # Need seqs. We pad beginning to return row-level
-        from src.xai.reconstruction_analysis import sequences_to_row_scores
-        
+
+        from src.models.lstm_autoencoder import build_sequences, sequences_to_row_scores
+
         seqs = build_sequences(X_lstm, seq_len)
         X_hat = model.predict(seqs, verbose=0, batch_size=128)
         seq_err = np.mean(np.abs(seqs - X_hat), axis=(1, 2))
-        
-        # We need a hacky way since the original phase 7 does row alignment
-        # Simpler: just compare the last row of each seq
-        pad = np.zeros(seq_len - 1)
-        row_err = np.concatenate([pad, seq_err])
-        results["LSTM-AE"] = (row_err > threshold)
+        row_scores = sequences_to_row_scores(seq_err, len(test_df), seq_len)
+        results["LSTM-AE"] = (row_scores > threshold)
 
     return y_true, results
 
@@ -209,15 +199,17 @@ def compile_table_III() -> pd.DataFrame:
         try:
             best = df.iloc[df[target_col].idxmax()]
             rows.append({"Method": "Rule-Based", "Hyperparameters": f"MAD k={best.get('k', '?')}"})
-        except: pass
-        
+        except (KeyError, ValueError, IndexError) as e:
+            print(f"[stats] Warning: could not parse rule_based_k_sweep.csv: {e}")
+
     if (RESULTS_DIR / "if_sweep.csv").exists():
         df = pd.read_csv(RESULTS_DIR / "if_sweep.csv")
         target_col = "valid_f1" if "valid_f1" in df.columns else "f1"
         try:
             best = df.iloc[df[target_col].idxmax()]
             rows.append({"Method": "Isolation Forest", "Hyperparameters": f"contamination={best.get('contamination', '?')}"})
-        except: pass
+        except (KeyError, ValueError, IndexError) as e:
+            print(f"[stats] Warning: could not parse if_sweep.csv: {e}")
 
     if (RESULTS_DIR / "lof_sweep.csv").exists():
         df = pd.read_csv(RESULTS_DIR / "lof_sweep.csv")
@@ -225,7 +217,8 @@ def compile_table_III() -> pd.DataFrame:
         try:
             best = df.iloc[df[target_col].idxmax()]
             rows.append({"Method": "Local Outlier Factor", "Hyperparameters": f"neighbors={int(best.get('n_neighbors', 0))}, cont={best.get('contamination', '?')}"})
-        except: pass
+        except (KeyError, ValueError, IndexError) as e:
+            print(f"[stats] Warning: could not parse lof_sweep.csv: {e}")
 
     if (RESULTS_DIR / "lstm_ae_model_meta.json").exists():
         with open(RESULTS_DIR / "lstm_ae_model_meta.json", "r") as f:

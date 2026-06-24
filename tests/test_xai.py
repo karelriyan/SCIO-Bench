@@ -6,12 +6,9 @@ Tests SHAP logic and LSTM reconstruction error parsing.
 import pytest
 import numpy as np
 import pandas as pd
-import pathlib
-import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
-
-from src.xai.shap_analysis import analyze_shap, _get_feature_cols
+from src.xai.shap_analysis import analyze_shap
+from src.config import get_feature_cols
 from src.xai.reconstruction_analysis import build_sequences, sequences_to_row_scores
 
 
@@ -44,13 +41,13 @@ from sklearn.ensemble import IsolationForest
 class TestSHAPAnalysis:
     def test_feature_cols_exclusion(self):
         df = _make_df(50)
-        cols = _get_feature_cols(df)
+        cols = get_feature_cols(df)
         assert "is_anomaly" not in cols
         assert "mppt_w" in cols
 
     def test_analyze_shap_returns_dict(self):
         df = _make_df(50)
-        feat_cols = _get_feature_cols(df)
+        feat_cols = get_feature_cols(df)
         
         # Use a real IsolationForest so SHAP accepts it
         clf = IsolationForest(random_state=42)
@@ -67,7 +64,7 @@ class TestSHAPAnalysis:
         df = _make_df(50)
         df["anomaly_type"] = "normal"
         df["is_anomaly"] = False
-        feat_cols = _get_feature_cols(df)
+        feat_cols = get_feature_cols(df)
         
         clf = IsolationForest(random_state=42)
         clf.fit(df[feat_cols].values)

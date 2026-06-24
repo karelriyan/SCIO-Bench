@@ -6,10 +6,6 @@ without requiring full model inference or TF compilation.
 
 import pytest
 import numpy as np
-import pathlib
-import sys
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from src.evaluation.edge_profiling import format_bytes, profile_inference
 

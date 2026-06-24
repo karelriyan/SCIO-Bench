@@ -7,9 +7,6 @@ All tests use synthetic data — no real dataset required.
 import pytest
 import numpy as np
 import pandas as pd
-import sys, pathlib
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from src.data.augmentation import (
     simulate_soc_nonlinear,

@@ -6,6 +6,9 @@ All tunable constants, paths, and hyperparameters live here.
 import pathlib
 from dataclasses import dataclass
 
+import numpy as np
+import pandas as pd
+
 # ─── Reproducibility ──────────────────────────────────────────────────────────
 RANDOM_SEED: int = 42
 
@@ -131,7 +134,48 @@ LABEL_COLS = [
     "protocol",
 ]
 
+BOOLEAN_LABEL_COLS = ["is_anomaly", "anomaly_type", "is_weather_event"]
+CAT_COLS = ["device_id", "protocol"]
+META_COLS = ["timestamp"] + BOOLEAN_LABEL_COLS + CAT_COLS
+
 # ─── Feature Engineering ──────────────────────────────────────────────────────
 
 ROLLING_WINDOW: int = 12       # 6 hours for rolling mean/std features
+
+# ─── Shared Helpers ──────────────────────────────────────────────────────────
+
+EXCLUDE_FROM_FEATURES: set[str] = {"is_low_irradiance_period"}
+
+
+def get_feature_cols(
+    df: pd.DataFrame,
+    label_cols: list[str] | None = None,
+    exclude: set[str] | None = None,
+) -> list[str]:
+    """
+    Return numeric feature columns suitable for ML models.
+
+    Excludes label/meta columns, categorical columns, and any columns
+    in the ``exclude`` set (e.g. binary flags that should not be scaled).
+
+    Args:
+        df:         DataFrame to inspect.
+        label_cols: Columns to exclude. Defaults to :data:`LABEL_COLS`.
+        exclude:    Additional columns to exclude. Defaults to
+                    ``{"is_low_irradiance_period"}``.
+
+    Returns:
+        List of numeric feature column names.
+    """
+    if label_cols is None:
+        label_cols = LABEL_COLS
+    if exclude is None:
+        exclude = EXCLUDE_FROM_FEATURES
+
+    return [
+        c for c in df.columns
+        if c not in label_cols
+        and c not in exclude
+        and df[c].dtype in (np.float64, np.float32, np.int64, np.int32, float, int)
+    ]
 

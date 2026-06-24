@@ -6,10 +6,6 @@ Tests McNemar test math and table compilation structure.
 import pytest
 import numpy as np
 import pandas as pd
-import pathlib
-import sys
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from src.evaluation.statistical_tests import (
     mcnemar_test,

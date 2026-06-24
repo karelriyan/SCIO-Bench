@@ -32,6 +32,7 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 from src import config
+from src.config import get_feature_cols
 from src.evaluation.metrics import compute_detection_metrics
 
 warnings.filterwarnings("ignore")
@@ -40,14 +41,6 @@ SPLITS_DIR  = config.SPLITS_DIR
 RESULTS_DIR = config.RESULTS_DIR
 
 LABEL_COLS = config.LABEL_COLS
-
-
-def _get_feature_cols(df: pd.DataFrame) -> list[str]:
-    """Return numeric feature columns (excludes label/meta/categorical cols)."""
-    return [c for c in df.columns
-            if c not in LABEL_COLS
-            and df[c].dtype in (np.float64, np.float32, np.int64, np.int32, float, int)
-            and c != "is_low_irradiance_period"]
 
 
 # ─── Shared Evaluation ───────────────────────────────────────────────────────
@@ -109,7 +102,7 @@ def tune_isolation_forest(
     Fits ONLY on normal training rows (unsupervised paradigm).
     Returns: (best_model, best_params, all_results_df)
     """
-    feat_cols = _get_feature_cols(train_df)
+    feat_cols = get_feature_cols(train_df)
     # Fit on normal-only rows
     X_train_normal = train_df[train_df["anomaly_type"] == "normal"][feat_cols].values
     X_val  = val_df[feat_cols].values
@@ -157,7 +150,7 @@ def tune_lof(
     Fits ONLY on normal training rows.
     Returns: (best_model, best_params, all_results_df)
     """
-    feat_cols = _get_feature_cols(train_df)
+    feat_cols = get_feature_cols(train_df)
     X_train_normal = train_df[train_df["anomaly_type"] == "normal"][feat_cols].values
     X_val  = val_df[feat_cols].values
     y_val  = val_df["is_anomaly"].astype(int).values
@@ -202,7 +195,7 @@ def evaluate_sklearn_model(
     Evaluate a fitted sklearn IF/LOF on test set.
     Maps sklearn -1/1 convention to 1/0 (anomaly/normal).
     """
-    feat_cols = _get_feature_cols(test_df)
+    feat_cols = get_feature_cols(test_df)
     X_test = test_df[feat_cols].values
     y_true = test_df["is_anomaly"].astype(int).values
 
@@ -219,7 +212,7 @@ def score_sklearn_model(clf, df: pd.DataFrame) -> np.ndarray:
     For IF: negate decision function (lower = more anomalous internally).
     For LOF: negate score_samples.
     """
-    feat_cols = _get_feature_cols(df)
+    feat_cols = get_feature_cols(df)
     X = df[feat_cols].values
     if hasattr(clf, "decision_function"):
         raw = -clf.decision_function(X)   # IF: negate so higher = more anomalous

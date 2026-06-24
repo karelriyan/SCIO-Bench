@@ -7,17 +7,14 @@ Uses synthetic DataFrames — no real dataset or TF model required.
 import pytest
 import numpy as np
 import pandas as pd
-import pathlib
-import sys
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+import tempfile
 
 from src.models.l2_classifier import (
     mir_at_k,
     L2Classifier,
     L2_TARGET_CLASSES,
-    _get_feature_cols,
 )
+from src.config import get_feature_cols
 
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -109,12 +106,12 @@ class TestMIRAtK:
 class TestGetFeatureCols:
     def test_excludes_label_cols(self):
         df = _make_df(50)
-        cols = _get_feature_cols(df)
+        cols = get_feature_cols(df)
         for c in ("is_anomaly", "anomaly_type", "timestamp", "device_id"):
             assert c not in cols
 
     def test_nonempty(self):
-        assert len(_get_feature_cols(_make_df(50))) > 0
+        assert len(get_feature_cols(_make_df(50))) > 0
 
 
 # ─── L2Classifier ────────────────────────────────────────────────────────────
@@ -204,3 +201,26 @@ class TestEvaluate:
         l1_scores = np.random.rand(len(df))
         m = clf.evaluate(df, l1_pred, l1_scores, k_budget=20)
         assert 0.0 <= m["typing_accuracy"] <= 1.0
+
+
+# ─── Save / Load Roundtrip ───────────────────────────────────────────────────
+
+class TestSaveLoad:
+    def test_roundtrip_predictions_match(self):
+        """After save→load, predictions must be bit-for-bit identical."""
+        import pathlib
+        df = _make_df(300, seed=0)
+        clf = L2Classifier(n_estimators=20, use_smote=False, random_state=42)
+        clf.fit(df)
+        anom_df = df[df["is_anomaly"]]
+        preds_before = clf.predict(anom_df)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "l2_model.pkl"
+            clf.save(path)
+            loaded = L2Classifier.load(path)
+
+        preds_after = loaded.predict(anom_df)
+        np.testing.assert_array_equal(preds_before, preds_after)
+        assert loaded.is_fitted is True
+        assert list(loaded.classes_) == list(clf.classes_)

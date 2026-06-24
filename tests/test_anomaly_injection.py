@@ -7,9 +7,6 @@ Uses synthetic mini-DataFrames — no real dataset required.
 import pytest
 import numpy as np
 import pandas as pd
-import sys, pathlib
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from src.data.anomaly_injection import (
     inject_all_anomalies,

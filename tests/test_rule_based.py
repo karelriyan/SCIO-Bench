@@ -7,10 +7,7 @@ Uses synthetic DataFrames — no real dataset required.
 import pytest
 import numpy as np
 import pandas as pd
-import pathlib
-import sys
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+import tempfile
 
 from src.models.rule_based import (
     RuleBasedDetector,
@@ -235,3 +232,39 @@ class TestEndToEnd:
         scores = det.predict_proba_proxy(train)
         assert scores.min() >= 0.0
         assert scores.max() <= 1.0
+
+
+# ─── Save / Load Roundtrip ───────────────────────────────────────────────────
+
+class TestSaveLoad:
+    def test_roundtrip_thresholds_preserved(self):
+        """After save→load, thresholds must be identical."""
+        import pathlib
+        train = _make_normal_df(300)
+        det = RuleBasedDetector(k=3.5)
+        det.fit(train)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "model.json"
+            det.save(path)
+            loaded = RuleBasedDetector.load(path)
+
+        assert loaded.k == det.k
+        assert loaded.thresholds.r2_power_delta == det.thresholds.r2_power_delta
+        assert loaded.thresholds.r6_physics_residual == det.thresholds.r6_physics_residual
+        assert loaded.is_fitted is True
+
+    def test_roundtrip_predictions_match(self):
+        """After save→load, predictions must be bit-for-bit identical."""
+        import pathlib
+        train = _make_normal_df(300)
+        test = _make_test_df(_make_normal_df(200))
+        det = RuleBasedDetector(k=3.5)
+        det.fit(train)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "model.json"
+            det.save(path)
+            loaded = RuleBasedDetector.load(path)
+
+        np.testing.assert_array_equal(det.predict(test), loaded.predict(test))

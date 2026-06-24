@@ -7,19 +7,15 @@ prediction logic using a lightweight mock model (avoids full TF training).
 import pytest
 import numpy as np
 import pandas as pd
-import pathlib
-import sys
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from src.models.lstm_autoencoder import (
     build_sequences,
     sequences_to_row_scores,
     _mad_threshold,
-    _get_feature_cols,
     LSTMAutoencoder,
     SEQ_LEN,
 )
+from src.config import get_feature_cols
 
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -124,12 +120,12 @@ class TestMADThreshold:
 class TestGetFeatureCols:
     def test_excludes_label_cols(self):
         df = _make_df(50)
-        cols = _get_feature_cols(df)
+        cols = get_feature_cols(df)
         for c in ("is_anomaly", "anomaly_type", "timestamp", "device_id", "protocol"):
             assert c not in cols
 
     def test_nonempty(self):
-        assert len(_get_feature_cols(_make_df(50))) > 0
+        assert len(get_feature_cols(_make_df(50))) > 0
 
 
 # ─── LSTMAutoencoder (light weight — no TF training) ─────────────────────────
@@ -143,7 +139,7 @@ class TestLSTMAutoencoderLogic:
     def _make_ae_with_mock(self, df: pd.DataFrame) -> LSTMAutoencoder:
         """Create AE with a fake model that returns zeros (perfect reconstruction)."""
         ae = LSTMAutoencoder(seq_len=10, batch_size=32, epochs=1)
-        ae.feat_cols  = _get_feature_cols(df)
+        ae.feat_cols  = get_feature_cols(df)
         ae.n_features = len(ae.feat_cols)
         ae.threshold  = 0.05        # arbitrary fixed threshold for testing
         ae.k          = 3.0

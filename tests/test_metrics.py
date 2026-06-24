@@ -3,13 +3,9 @@ Unit Tests for Centralized Evaluation Metrics
 Verifies F1, AUC, ADL, FPR@A6, and confusion matrix calculation logic.
 """
 
-import sys
-import pathlib
 import pytest
 import numpy as np
 import pandas as pd
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from src.evaluation.metrics import compute_detection_metrics, confusion_matrix_dict
 

@@ -3,8 +3,8 @@ Phase 1 — Preprocessing
 Loads, merges, resamples, cleans, and renames the Kaggle dataset to SCIO conventions.
 
 Input:  data/raw/  (Plant_1/2 × Generation + Weather Sensor CSVs)
-Output: data/processed/plant1_clean.parquet
-        data/processed/plant2_clean.parquet
+Output: data/processed/plant1_clean.csv
+        data/processed/plant2_clean.csv
 
 Column mapping (Kaggle → SCIO):
   DC_POWER         → mppt_w        (W — multiply ×1000 from kW)

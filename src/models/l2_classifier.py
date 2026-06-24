@@ -38,6 +38,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import StratifiedKFold
 
 from src import config
+from src.config import get_feature_cols
 
 warnings.filterwarnings("ignore")
 
@@ -62,15 +63,7 @@ L2_TARGET_CLASSES = [
     "false_data_injection",
 ]
 
-LABEL_COLS = ["is_anomaly", "anomaly_type", "is_weather_event",
-              "timestamp", "device_id", "protocol"]
-
-
-def _get_feature_cols(df: pd.DataFrame) -> list[str]:
-    return [c for c in df.columns
-            if c not in LABEL_COLS
-            and df[c].dtype in (np.float64, np.float32, np.int64, np.int32, float, int)
-            and c != "is_low_irradiance_period"]
+LABEL_COLS = config.LABEL_COLS
 
 
 # ─── MIR@k ────────────────────────────────────────────────────────────────────
@@ -151,7 +144,7 @@ class L2Classifier:
         Fit L2 classifier on anomaly rows only (excluding A6 weather events).
         Applies SMOTE to balance rare anomaly types.
         """
-        self.feat_cols = _get_feature_cols(train_df)
+        self.feat_cols = get_feature_cols(train_df)
 
         # Use only real anomaly rows (not A6 weather, not normal)
         anom_df = train_df[
@@ -363,7 +356,7 @@ def run_phase8(
     if lstm_model_path.exists() and lstm_meta_path.exists():
         import tensorflow as tf
         from src.models.lstm_autoencoder import (
-            build_sequences, sequences_to_row_scores, _get_feature_cols as _lstm_feat
+            build_sequences, sequences_to_row_scores, get_feature_cols as _lstm_feat
         )
         with open(lstm_meta_path, "r") as f:
             meta = json.load(f)

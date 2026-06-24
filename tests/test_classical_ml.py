@@ -7,13 +7,8 @@ No real dataset required — uses synthetic DataFrames.
 import pytest
 import numpy as np
 import pandas as pd
-import pathlib
-import sys
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 from src.models.classical_ml import (
-    _get_feature_cols,
     _compute_metrics,
     _fit_isolation_forest,
     tune_isolation_forest,
@@ -21,6 +16,7 @@ from src.models.classical_ml import (
     evaluate_sklearn_model,
     score_sklearn_model,
 )
+from src.config import get_feature_cols
 
 
 # ─── Fixture ─────────────────────────────────────────────────────────────────
@@ -61,20 +57,20 @@ def _make_df(n: int = 300, anomaly_frac: float = 0.1, seed: int = 0) -> pd.DataF
 class TestFeatureCols:
     def test_excludes_label_cols(self):
         df = _make_df(50)
-        cols = _get_feature_cols(df)
+        cols = get_feature_cols(df)
         for c in ("is_anomaly", "anomaly_type", "is_weather_event",
                   "timestamp", "device_id", "protocol"):
             assert c not in cols, f"Label col {c} should be excluded"
 
     def test_includes_numeric_features(self):
         df = _make_df(50)
-        cols = _get_feature_cols(df)
+        cols = get_feature_cols(df)
         for c in ("mppt_w", "volt_v", "batt_pct", "physics_residual"):
             assert c in cols, f"Feature {c} should be included"
 
     def test_returns_nonempty(self):
         df = _make_df(50)
-        assert len(_get_feature_cols(df)) > 0
+        assert len(get_feature_cols(df)) > 0
 
 
 # ─── Isolation Forest ────────────────────────────────────────────────────────
@@ -87,14 +83,14 @@ class TestIsolationForest:
 
     def test_fit_returns_model(self):
         train, _ = self._train_val()
-        feat_cols = _get_feature_cols(train)
+        feat_cols = get_feature_cols(train)
         X = train[feat_cols].values
         clf = _fit_isolation_forest(X)
         assert hasattr(clf, "predict")
 
     def test_predict_binary(self):
         train, val = self._train_val()
-        feat_cols  = _get_feature_cols(train)
+        feat_cols  = get_feature_cols(train)
         X_train = train[train["anomaly_type"] == "normal"][feat_cols].values
         clf = _fit_isolation_forest(X_train, contamination=0.09)
         raw  = clf.predict(val[feat_cols].values)
@@ -167,7 +163,7 @@ class TestLOF:
 class TestScoring:
     def _get_if_model(self):
         train = _make_df(200, seed=20)
-        feat_cols = _get_feature_cols(train)
+        feat_cols = get_feature_cols(train)
         X = train[train["anomaly_type"] == "normal"][feat_cols].values
         return _fit_isolation_forest(X, contamination=0.09)
 

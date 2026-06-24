@@ -30,6 +30,7 @@ import json
 import pickle
 
 from src import config
+from src.config import get_feature_cols
 
 warnings.filterwarnings("ignore")
 
@@ -197,13 +198,8 @@ def run_phase10_profiling(
     print("[edge] Loading test subset for profiling...")
     test_df = pd.read_csv(splits_dir / "test.csv", parse_dates=["timestamp"])
     train_df = pd.read_csv(splits_dir / "train.csv", parse_dates=["timestamp"])
-    
-    # Label cols matching previous phases
-    label_cols = ["is_anomaly", "anomaly_type", "is_weather_event", 
-                  "timestamp", "device_id", "protocol"]
-    feat_cols = [c for c in test_df.columns if c not in label_cols 
-                 and test_df[c].dtype in (np.float64, np.float32, np.int64, np.int32)
-                 and c != "is_low_irradiance_period"]
+
+    feat_cols = get_feature_cols(test_df)
                  
     X_train = train_df[feat_cols].values
     X_test  = test_df[feat_cols].values

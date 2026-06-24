@@ -71,9 +71,9 @@ SENSOR_COLS = [
 ]
 
 # Label & categorical columns — never scaled
-LABEL_COLS = ["is_anomaly", "anomaly_type", "is_weather_event"]
-CAT_COLS   = ["device_id", "protocol"]
-META_COLS  = ["timestamp"] + LABEL_COLS + CAT_COLS
+LABEL_COLS = config.BOOLEAN_LABEL_COLS
+CAT_COLS   = config.CAT_COLS
+META_COLS  = config.META_COLS
 
 # Numeric feature columns (to be scaled) — built dynamically after engineering
 # (determined at runtime after all features are added)

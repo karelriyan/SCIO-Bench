@@ -10,9 +10,7 @@ import numpy as np
 import pandas as pd
 import pathlib
 import pickle
-import sys, tempfile
-
-sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+import tempfile
 
 from src.data.feature_engineering import (
     add_lag_features,

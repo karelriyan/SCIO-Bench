@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from src import config
+from src.config import get_feature_cols
 
 warnings.filterwarnings("ignore")
 
@@ -29,16 +30,6 @@ except ImportError:
 
 SPLITS_DIR  = config.SPLITS_DIR
 RESULTS_DIR = config.RESULTS_DIR
-
-LABEL_COLS = ["is_anomaly", "anomaly_type", "is_weather_event",
-              "timestamp", "device_id", "protocol"]
-
-
-def _get_feature_cols(df: pd.DataFrame) -> list[str]:
-    return [c for c in df.columns
-            if c not in LABEL_COLS
-            and df[c].dtype in (np.float64, np.float32, np.int64, np.int32, float, int)
-            and c != "is_low_irradiance_period"]
 
 
 def load_isolation_forest():
@@ -145,7 +136,7 @@ def run_phase9_shap(
     print("[shap_xai] Loading splits …")
     test_df = pd.read_csv(splits_dir / "test.csv", parse_dates=["timestamp"])
     
-    feat_cols = _get_feature_cols(test_df)
+    feat_cols = get_feature_cols(test_df)
     
     try:
         clf = load_isolation_forest()
